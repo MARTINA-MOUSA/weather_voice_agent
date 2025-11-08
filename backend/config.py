@@ -8,8 +8,7 @@ class Config:
     
     # Gemini API
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    GEMINI_MODEL = "gemini-1.5-flash"  # أو "gemini-1.5-pro" للنموذج الأقوى
-    
+    GEMINI_MODEL = "gemini-2.5-flash" 
     # Weather API
     WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
     WEATHER_BASE_URL = "http://api.openweathermap.org/data/2.5/weather"

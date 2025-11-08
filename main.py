@@ -94,13 +94,13 @@ def main():
                 break
             except Exception as e:
                 error_msg = f"حدث خطأ: {str(e)}"
-                print(f"❌ {error_msg}\n")
+                print(f" {error_msg}\n")
     
     except ValueError as e:
-        print(f"❌ خطأ في الإعدادات: {e}")
-        print("💡 تأكد من إضافة المفاتيح في ملف .env")
+        print(f" خطأ في الإعدادات: {e}")
+        print(" تأكد من إضافة المفاتيح في ملف .env")
     except Exception as e:
-        print(f"❌ حدث خطأ: {e}")
+        print(f" حدث خطأ: {e}")
 
 if __name__ == "__main__":
     main()
