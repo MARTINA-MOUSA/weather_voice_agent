@@ -31,13 +31,20 @@ class GeminiService:
 الموقع:"""
             
             response = self.model.generate_content(prompt)
+            
+            # التحقق من وجود response
+            if not response or not hasattr(response, 'text'):
+                return None
+                
             location = response.text.strip()
             
             if "لا يوجد موقع" in location or not location:
                 return None
             return location
         except Exception as e:
-            # لا نطبع الأخطاء للمستخدم، نكتفي بإرجاع None
+            error_str = str(e)
+            # طباعة الخطأ للتشخيص (يمكن إزالته لاحقاً)
+            print(f"خطأ في extract_location: {error_str[:200]}")
             return None
     
     def generate_response(self, user_query: str, context: Optional[str] = None) -> str:
@@ -51,14 +58,26 @@ class GeminiService:
             prompt += f"المستخدم: {user_query}\nالمساعد:"
             
             response = self.model.generate_content(prompt)
+            
+            # التحقق من وجود response
+            if not response or not hasattr(response, 'text'):
+                return "عذراً، لم أتمكن من الحصول على رد من خدمة الذكاء الاصطناعي."
+            
             return response.text.strip()
         except Exception as e:
             error_msg = str(e)
+            # طباعة الخطأ للتشخيص
+            print(f"خطأ في generate_response: {error_msg[:300]}")
+            
             # تحويل الأخطاء الإنجليزية إلى عربية
             if "404" in error_msg or "not found" in error_msg.lower():
-                return "عذراً، حدث خطأ في الاتصال بخدمة الذكاء الاصطناعي. يرجى المحاولة مرة أخرى."
+                return "عذراً، حدث خطأ في الاتصال بخدمة الذكاء الاصطناعي. يرجى التحقق من اسم النموذج والمفتاح."
             elif "quota" in error_msg.lower() or "limit" in error_msg.lower():
                 return "عذراً، تم تجاوز الحد المسموح من الاستخدام. يرجى المحاولة لاحقاً."
+            elif "api" in error_msg.lower() and "key" in error_msg.lower():
+                return "عذراً، يرجى التحقق من صحة مفتاح API في ملف .env"
+            elif "permission" in error_msg.lower() or "forbidden" in error_msg.lower():
+                return "عذراً، لا توجد صلاحية للوصول إلى الخدمة. يرجى التحقق من المفتاح."
             else:
-                return "عذراً، حدث خطأ في معالجة السؤال. يرجى المحاولة مرة أخرى."
+                return f"عذراً، حدث خطأ: {error_msg[:100]}"
 
