@@ -11,10 +11,10 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
-from config import Config
-from services.gemini_service import GeminiService
-from services.weather_service import WeatherService
-from services.speech_service import SpeechService
+from backend.config import Config
+from AI.gemini_service import GeminiService
+from backend.weather_service import WeatherService
+from AI.speech_service import SpeechService
 
 def main():
     """الدالة الرئيسية"""

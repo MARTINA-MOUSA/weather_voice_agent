@@ -6,19 +6,19 @@ Main Streamlit Application
 import sys
 import os
 
-# إضافة المجلد الحالي إلى المسار
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
+# إضافة المجلد الرئيسي إلى المسار
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
 
 import streamlit as st
 import time
 from typing import Optional
-from config import Config
-from services.gemini_service import GeminiService
-from services.weather_service import WeatherService
-from services.speech_service import SpeechService
-from utils.helpers import format_weather_card
+from backend.config import Config
+from AI.gemini_service import GeminiService
+from backend.weather_service import WeatherService
+from AI.speech_service import SpeechService
+from backend.utils.helpers import format_weather_card
 
 # إعدادات الصفحة
 st.set_page_config(

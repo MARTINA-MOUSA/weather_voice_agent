@@ -3,10 +3,18 @@
 Speech Recognition and Text-to-Speech Service
 """
 
+import sys
+import os
+
+# إضافة المجلد الرئيسي إلى المسار
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
 import speech_recognition as sr
 import pyttsx3
 from typing import Optional
-from config import Config
+from backend.config import Config
 
 
 class SpeechService:
