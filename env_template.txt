@@ -1,0 +1,9 @@
+# Gemini API Key
+# احصل على المفتاح من: https://makersuite.google.com/app/apikey
+GEMINI_API_KEY=AIzaSyBA_jC-uRgjd3aozmK_C49QNd0_tuKsGXU
+
+# Weather API Key (OpenWeatherMap)
+# احصل على المفتاح من: https://openweathermap.org/api
+WEATHER_API_KEY=6866b61c62b1b72f25be64a2123fdf4a
+
+
