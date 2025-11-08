@@ -37,7 +37,7 @@ class GeminiService:
                 return None
             return location
         except Exception as e:
-            print(f"خطأ في استخراج الموقع: {e}")
+            # لا نطبع الأخطاء للمستخدم، نكتفي بإرجاع None
             return None
     
     def generate_response(self, user_query: str, context: Optional[str] = None) -> str:
@@ -53,5 +53,12 @@ class GeminiService:
             response = self.model.generate_content(prompt)
             return response.text.strip()
         except Exception as e:
-            return f"عذراً، حدث خطأ في معالجة السؤال: {str(e)}"
+            error_msg = str(e)
+            # تحويل الأخطاء الإنجليزية إلى عربية
+            if "404" in error_msg or "not found" in error_msg.lower():
+                return "عذراً، حدث خطأ في الاتصال بخدمة الذكاء الاصطناعي. يرجى المحاولة مرة أخرى."
+            elif "quota" in error_msg.lower() or "limit" in error_msg.lower():
+                return "عذراً، تم تجاوز الحد المسموح من الاستخدام. يرجى المحاولة لاحقاً."
+            else:
+                return "عذراً، حدث خطأ في معالجة السؤال. يرجى المحاولة مرة أخرى."
 

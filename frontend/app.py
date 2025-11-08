@@ -224,7 +224,17 @@ def main():
                     })
                     
                 except Exception as e:
-                    error_msg = f"عذراً، حدث خطأ: {str(e)}"
+                    error_str = str(e)
+                    # تحويل الأخطاء الإنجليزية إلى عربية
+                    if "404" in error_str or "not found" in error_str.lower():
+                        error_msg = "عذراً، حدث خطأ في الاتصال بخدمة الذكاء الاصطناعي. يرجى المحاولة مرة أخرى."
+                    elif "quota" in error_str.lower() or "limit" in error_str.lower():
+                        error_msg = "عذراً، تم تجاوز الحد المسموح من الاستخدام. يرجى المحاولة لاحقاً."
+                    elif "GEMINI_API_KEY" in error_str or "WEATHER_API_KEY" in error_str:
+                        error_msg = "عذراً، يرجى التحقق من إعدادات المفاتيح في ملف .env"
+                    else:
+                        error_msg = "عذراً، حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى."
+                    
                     st.error(error_msg)
                     st.session_state.messages.append({
                         "role": "assistant",

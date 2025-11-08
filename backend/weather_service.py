@@ -32,7 +32,7 @@ class WeatherService:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"خطأ في جلب بيانات الطقس: {e}")
+            # لا نطبع الأخطاء للمستخدم
             return None
     
     def format_weather_response(self, weather_data: Dict) -> str:
@@ -59,8 +59,8 @@ class WeatherService:
 📊 الضغط: {pressure} hPa"""
             
             return response
-        except KeyError as e:
-            return f"عذراً، حدث خطأ في معالجة بيانات الطقس: {e}"
+        except KeyError:
+            return "عذراً، حدث خطأ في معالجة بيانات الطقس."
     
     def get_weather_info(self, location: str) -> str:
         weather_data = self.get_weather(location)

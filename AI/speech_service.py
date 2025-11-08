@@ -25,8 +25,8 @@ class SpeechService:
             self.tts_engine = pyttsx3.init()
             self.tts_engine.setProperty('rate', Config.TTS_RATE)
             self.tts_engine.setProperty('volume', Config.TTS_VOLUME)
-        except Exception as e:
-            print(f"تحذير: لم يتم تهيئة محرك TTS: {e}")
+        except Exception:
+            # لا نطبع الأخطاء للمستخدم
             self.tts_engine = None
     
     def listen(self, timeout: int = None, phrase_time_limit: int = None) -> Optional[str]:
@@ -52,11 +52,11 @@ class SpeechService:
             return None
         except sr.UnknownValueError:
             return None
-        except sr.RequestError as e:
-            print(f"خطأ في خدمة التعرف على الصوت: {e}")
+        except sr.RequestError:
+            # لا نطبع الأخطاء للمستخدم
             return None
-        except Exception as e:
-            print(f"خطأ غير متوقع في الاستماع: {e}")
+        except Exception:
+            # لا نطبع الأخطاء للمستخدم
             return None
     
     def speak(self, text: str):
@@ -65,6 +65,7 @@ class SpeechService:
             try:
                 self.tts_engine.say(text)
                 self.tts_engine.runAndWait()
-            except Exception as e:
-                print(f"خطأ في تحويل النص إلى كلام: {e}")
+            except Exception:
+                # لا نطبع الأخطاء للمستخدم
+                pass
 
