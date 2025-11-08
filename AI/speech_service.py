@@ -16,10 +16,16 @@ from backend.config import Config
 # محاولة استيراد gTTS (الأفضل للعربية)
 try:
     from gtts import gTTS
-    import playsound
     GTTS_AVAILABLE = True
 except ImportError:
     GTTS_AVAILABLE = False
+
+# محاولة استيراد pygame للصوت
+try:
+    import pygame
+    PYGAME_AVAILABLE = True
+except ImportError:
+    PYGAME_AVAILABLE = False
 
 # محاولة استيراد pyttsx3 كبديل
 try:
@@ -101,22 +107,55 @@ class SpeechService:
                     tmp_file_path = tmp_file.name
                     tts.save(tmp_file_path)
                 
-                # تشغيل الملف
-                try:
-                    playsound.playsound(tmp_file_path, block=True)
-                except Exception:
-                    # إذا فشل playsound، جرب طريقة أخرى
+                # تشغيل الملف باستخدام pygame
+                if PYGAME_AVAILABLE:
+                    try:
+                        pygame.mixer.init()
+                        pygame.mixer.music.load(tmp_file_path)
+                        pygame.mixer.music.play()
+                        
+                        # انتظار انتهاء التشغيل
+                        while pygame.mixer.music.get_busy():
+                            import time
+                            time.sleep(0.1)
+                        
+                        pygame.mixer.quit()
+                    except Exception as e:
+                        print(f"خطأ في pygame: {e}")
+                        # محاولة استخدام subprocess كبديل
+                        import subprocess
+                        import platform
+                        try:
+                            if platform.system() == 'Windows':
+                                subprocess.run(['start', tmp_file_path], shell=True, check=False)
+                                import time
+                                time.sleep(2)  # انتظار قليل للسماح بالتشغيل
+                            elif platform.system() == 'Darwin':
+                                subprocess.run(['afplay', tmp_file_path], check=False)
+                            else:
+                                subprocess.run(['mpg123', tmp_file_path], check=False)
+                        except:
+                            pass
+                else:
+                    # استخدام subprocess مباشرة
                     import subprocess
                     import platform
-                    if platform.system() == 'Windows':
-                        subprocess.run(['start', tmp_file_path], shell=True, check=False)
-                    elif platform.system() == 'Darwin':
-                        subprocess.run(['afplay', tmp_file_path], check=False)
-                    else:
-                        subprocess.run(['mpg123', tmp_file_path], check=False)
+                    try:
+                        if platform.system() == 'Windows':
+                            subprocess.run(['start', tmp_file_path], shell=True, check=False)
+                            import time
+                            time.sleep(2)
+                        elif platform.system() == 'Darwin':
+                            subprocess.run(['afplay', tmp_file_path], check=False)
+                        else:
+                            subprocess.run(['mpg123', tmp_file_path], check=False)
+                    except:
+                        pass
                 
-                # حذف الملف المؤقت
+                # حذف الملف المؤقت بعد قليل
                 try:
+                    import time
+                    time.sleep(1)  # انتظار قليل قبل الحذف
                     os.unlink(tmp_file_path)
                 except:
                     pass

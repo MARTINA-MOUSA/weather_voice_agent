@@ -126,7 +126,7 @@ def main():
                         else:
                             st.success("✅ تم تهيئة التطبيق بنجاح! 🔊 الصوت متاح")
                     else:
-                        st.warning("✅ تم تهيئة التطبيق بنجاح! ⚠️ محرك الصوت غير متاح - قم بتثبيت: pip install gtts playsound")
+                        st.warning("✅ تم تهيئة التطبيق بنجاح! ⚠️ محرك الصوت غير متاح - قم بتثبيت: pip install gtts pygame")
                     
                     st.rerun()
                 except ValueError as e:
@@ -268,14 +268,16 @@ def main():
                         try:
                             # تشغيل الصوت في thread منفصل لتجنب تعطيل الواجهة
                             import threading
-                            def speak_async():
-                                st.session_state.speech_service.speak(response)
+                            speech_service = st.session_state.speech_service  # نسخ المرجع قبل thread
                             
-                            thread = threading.Thread(target=speak_async)
+                            def speak_async(service, text):
+                                service.speak(text)
+                            
+                            thread = threading.Thread(target=speak_async, args=(speech_service, response))
                             thread.daemon = True
                             thread.start()
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            print(f"خطأ في تشغيل الصوت: {e}")
                     
                 except Exception as e:
                     error_str = str(e)
@@ -326,10 +328,12 @@ def main():
                     if last_message:
                         try:
                             import threading
-                            def speak_async():
-                                st.session_state.speech_service.speak(last_message)
+                            speech_service = st.session_state.speech_service  # نسخ المرجع قبل thread
                             
-                            thread = threading.Thread(target=speak_async)
+                            def speak_async(service, text):
+                                service.speak(text)
+                            
+                            thread = threading.Thread(target=speak_async, args=(speech_service, last_message))
                             thread.daemon = True
                             thread.start()
                             st.success("🔊 جارٍ تشغيل الصوت...")
