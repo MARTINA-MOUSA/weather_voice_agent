@@ -8,7 +8,7 @@ class Config:
     
     # Gemini API
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    GEMINI_MODEL = "gemini-pro"
+    GEMINI_MODEL = "gemini-1.5-flash"  # أو "gemini-1.5-pro" للنموذج الأقوى
     
     # Weather API
     WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
