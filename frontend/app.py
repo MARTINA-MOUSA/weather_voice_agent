@@ -194,48 +194,42 @@ def main():
             "content": user_input
         })
         
-        # معالجة السؤال
-        with st.spinner("🤔 جارٍ التفكير..."):
-            try:
-                # استخراج الموقع
-                location = st.session_state.gemini_service.extract_location(user_input)
-                
-                if location:
-                    # الحصول على بيانات الطقس
-                    weather_data = st.session_state.weather_service.get_weather(location)
+        # معالجة السؤال وعرض الرد
+        with st.chat_message("assistant"):
+            with st.spinner("🤔 جارٍ التفكير..."):
+                try:
+                    # استخراج الموقع
+                    location = st.session_state.gemini_service.extract_location(user_input)
                     
-                    if weather_data:
-                        st.session_state.weather_data = weather_data
-                        response = st.session_state.weather_service.format_weather_response(weather_data)
+                    if location:
+                        # الحصول على بيانات الطقس
+                        weather_data = st.session_state.weather_service.get_weather(location)
                         
-                        # إضافة رد المساعد
-                        st.session_state.messages.append({
-                            "role": "assistant",
-                            "content": response
-                        })
+                        if weather_data:
+                            st.session_state.weather_data = weather_data
+                            response = st.session_state.weather_service.format_weather_response(weather_data)
+                        else:
+                            response = f"عذراً، لم أتمكن من العثور على معلومات الطقس لـ {location}."
                     else:
-                        response = f"عذراً، لم أتمكن من العثور على معلومات الطقس لـ {location}."
-                        st.session_state.messages.append({
-                            "role": "assistant",
-                            "content": response
-                        })
-                else:
-                    # استخدام Gemini للرد العام
-                    response = st.session_state.gemini_service.generate_response(user_input)
+                        # استخدام Gemini للرد العام
+                        response = st.session_state.gemini_service.generate_response(user_input)
+                    
+                    # عرض الرد
+                    st.write(response)
+                    
+                    # إضافة رد المساعد إلى الرسائل
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": response
                     })
-                
-                st.rerun()
-                
-            except Exception as e:
-                error_msg = f"عذراً، حدث خطأ: {str(e)}"
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": error_msg
-                })
-                st.rerun()
+                    
+                except Exception as e:
+                    error_msg = f"عذراً، حدث خطأ: {str(e)}"
+                    st.error(error_msg)
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": error_msg
+                    })
     
     # عرض بيانات الطقس
     if st.session_state.weather_data:
