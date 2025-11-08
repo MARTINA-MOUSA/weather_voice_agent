@@ -8,8 +8,6 @@ class Config:
     
     # Gemini API
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    # النماذج المتاحة: gemini-1.5-flash, gemini-1.5-pro, gemini-pro
-    # gemini-2.5-flash غير متاح حالياً
     GEMINI_MODEL = "gemini-2.5-flash"
     # Weather API
     WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
