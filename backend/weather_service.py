@@ -9,6 +9,7 @@ if root_dir not in sys.path:
 import requests
 from typing import Optional, Dict
 from backend.config import Config
+from backend.utils.city_mapping import translate_city_name
 
 
 class WeatherService:
@@ -21,19 +22,56 @@ class WeatherService:
         self.base_url = Config.WEATHER_BASE_URL
     
     def get_weather(self, location: str) -> Optional[Dict]:
-        try:
-            params = {
-                'q': location,
-                'appid': self.api_key,
-                'units': Config.WEATHER_UNITS,
-                'lang': Config.WEATHER_LANG
-            }
-            response = requests.get(self.base_url, params=params, timeout=10)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            # لا نطبع الأخطاء للمستخدم
+        """الحصول على معلومات الطقس لموقع معين"""
+        if not location:
             return None
+        
+        # تنظيف الموقع
+        location = location.strip()
+        
+        # تحويل اسم المدينة من العربية إلى الإنجليزية
+        english_location = translate_city_name(location)
+        
+        # محاولة البحث بالاسم الإنجليزي أولاً، ثم الأصلي
+        locations_to_try = [english_location, location]
+        
+        # إضافة "Cairo,EG" للقاهرة كحل احتياطي
+        if "cairo" in location.lower() or "القاهرة" in location or "القاهره" in location:
+            locations_to_try.insert(0, "Cairo,EG")
+        
+        for loc in locations_to_try:
+            if not loc:
+                continue
+            try:
+                params = {
+                    'q': loc,
+                    'appid': self.api_key,
+                    'units': Config.WEATHER_UNITS,
+                    'lang': Config.WEATHER_LANG
+                }
+                response = requests.get(self.base_url, params=params, timeout=10)
+                
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 404:
+                    # جرب الاسم التالي
+                    continue
+                else:
+                    # خطأ آخر
+                    response.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                # إذا كان الخطأ 404، جرب الاسم الآخر
+                if e.response and e.response.status_code == 404:
+                    continue
+                else:
+                    # خطأ آخر غير 404
+                    continue
+            except requests.exceptions.RequestException:
+                # خطأ في الاتصال، جرب الاسم الآخر
+                continue
+        
+        # فشلت جميع المحاولات
+        return None
     
     def format_weather_response(self, weather_data: Dict) -> str:
         if not weather_data:
