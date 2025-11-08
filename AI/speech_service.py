@@ -1,7 +1,3 @@
-"""
-خدمة التعرف على الصوت والتحويل إلى نص
-Speech Recognition and Text-to-Speech Service
-"""
 
 import sys
 import os
@@ -18,10 +14,8 @@ from backend.config import Config
 
 
 class SpeechService:
-    """خدمة للتعرف على الصوت وتحويل النص إلى كلام"""
     
     def __init__(self):
-        """تهيئة خدمات الصوت"""
         # تهيئة التعرف على الصوت
         self.recognizer = sr.Recognizer()
         self.microphone = sr.Microphone()

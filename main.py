@@ -1,7 +1,3 @@
-"""
-تطبيق سطر الأوامر
-Command Line Application
-"""
 
 import sys
 import os

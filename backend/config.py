@@ -1,8 +1,3 @@
-"""
-إعدادات المشروع
-Configuration settings
-"""
-
 import os
 from dotenv import load_dotenv
 
@@ -10,7 +5,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    """إعدادات التطبيق"""
     
     # Gemini API
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

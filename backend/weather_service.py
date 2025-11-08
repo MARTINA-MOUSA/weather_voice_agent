@@ -1,12 +1,7 @@
-"""
-خدمة الطقس
-Weather Service
-"""
 
 import sys
 import os
 
-# إضافة المجلد الرئيسي إلى المسار
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
@@ -17,10 +12,8 @@ from backend.config import Config
 
 
 class WeatherService:
-    """خدمة للحصول على معلومات الطقس"""
     
     def __init__(self):
-        """تهيئة خدمة الطقس"""
         if not Config.WEATHER_API_KEY:
             raise ValueError("WEATHER_API_KEY غير موجود")
         
@@ -28,7 +21,6 @@ class WeatherService:
         self.base_url = Config.WEATHER_BASE_URL
     
     def get_weather(self, location: str) -> Optional[Dict]:
-        """الحصول على معلومات الطقس لموقع معين"""
         try:
             params = {
                 'q': location,
@@ -44,7 +36,6 @@ class WeatherService:
             return None
     
     def format_weather_response(self, weather_data: Dict) -> str:
-        """تنسيق بيانات الطقس إلى رد قابل للقراءة"""
         if not weather_data:
             return "عذراً، لم أتمكن من الحصول على معلومات الطقس في الوقت الحالي."
         
@@ -72,7 +63,6 @@ class WeatherService:
             return f"عذراً، حدث خطأ في معالجة بيانات الطقس: {e}"
     
     def get_weather_info(self, location: str) -> str:
-        """الحصول على معلومات الطقس بشكل منسق"""
         weather_data = self.get_weather(location)
         return self.format_weather_response(weather_data)
 

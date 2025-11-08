@@ -1,8 +1,3 @@
-"""
-خدمة Gemini AI
-Gemini AI Service
-"""
-
 import sys
 import os
 
@@ -17,10 +12,8 @@ from backend.config import Config
 
 
 class GeminiService:
-    """خدمة للتفاعل مع Gemini AI"""
     
     def __init__(self):
-        """تهيئة خدمة Gemini"""
         if not Config.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY غير موجود")
         
