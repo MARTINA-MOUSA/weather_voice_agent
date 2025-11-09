@@ -69,6 +69,8 @@ if 'initialized' not in st.session_state:
     st.session_state.weather_service = None
     st.session_state.speech_service = None
     st.session_state.pending_voice_input = None
+    st.session_state.is_voice_input = False  # للتمييز بين الإدخال الصوتي والنصي
+    st.session_state.last_voice_response = None  # حفظ آخر رد صوتي
 
 def display_weather_card(weather_data: dict):
     """عرض بطاقة الطقس"""
@@ -143,6 +145,7 @@ def main():
                 st.session_state.gemini_service = None
                 st.session_state.weather_service = None
                 st.session_state.speech_service = None
+                st.session_state.last_voice_response = None
                 st.rerun()
         
         st.markdown("---")
@@ -166,6 +169,7 @@ def main():
         if st.button("🗑️ مسح المحادثة"):
             st.session_state.messages = []
             st.session_state.weather_data = None
+            st.session_state.last_voice_response = None
             st.rerun()
     
     # التحقق من التهيئة
@@ -194,6 +198,7 @@ def main():
                     if voice_input:
                         # حفظ الإدخال الصوتي للمعالجة
                         st.session_state.pending_voice_input = voice_input
+                        st.session_state.is_voice_input = True  # تمييز الإدخال الصوتي
                         st.rerun()
                     else:
                         st.warning("⚠️ لم يتم التعرف على الصوت. حاول مرة أخرى.")
@@ -205,59 +210,81 @@ def main():
     user_input = pending_voice if pending_voice else text_input
     
     if user_input:
-        # إضافة رسالة المستخدم
-        st.session_state.messages.append({
-            "role": "user",
-            "content": user_input
-        })
+        is_voice = st.session_state.is_voice_input if pending_voice else False
+        
+        # إضافة رسالة المستخدم (فقط إذا كان نصي)
+        if not is_voice:
+            st.session_state.messages.append({
+                "role": "user",
+                "content": user_input
+            })
         
         # مسح الإدخال الصوتي المعلق بعد استخدامه
         if pending_voice:
             st.session_state.pending_voice_input = None
+            st.session_state.is_voice_input = False
         
-        # معالجة السؤال وعرض الرد
-        with st.chat_message("assistant"):
-            with st.spinner("🤔 جارٍ التفكير..."):
-                try:
-                    # استخراج الموقع
-                    location = st.session_state.gemini_service.extract_location(user_input)
+        # معالجة السؤال
+        try:
+            # استخراج الموقع
+            location = st.session_state.gemini_service.extract_location(user_input)
+            
+            if location:
+                # الحصول على بيانات الطقس
+                weather_data = st.session_state.weather_service.get_weather(location)
+                
+                if weather_data:
+                    st.session_state.weather_data = weather_data
+                    response = st.session_state.weather_service.format_weather_response(weather_data)
+                else:
+                    # محاولة البحث مرة أخرى بأسماء بديلة
+                    from backend.utils.city_mapping import translate_city_name
+                    english_name = translate_city_name(location)
                     
-                    if location:
-                        # الحصول على بيانات الطقس
-                        weather_data = st.session_state.weather_service.get_weather(location)
-                        
+                    # محاولة البحث بالاسم الإنجليزي
+                    if english_name != location:
+                        weather_data = st.session_state.weather_service.get_weather(english_name)
                         if weather_data:
                             st.session_state.weather_data = weather_data
                             response = st.session_state.weather_service.format_weather_response(weather_data)
                         else:
-                            # محاولة البحث مرة أخرى بأسماء بديلة
-                            from backend.utils.city_mapping import translate_city_name
-                            english_name = translate_city_name(location)
-                            
-                            # محاولة البحث بالاسم الإنجليزي
-                            if english_name != location:
-                                weather_data = st.session_state.weather_service.get_weather(english_name)
+                            # محاولة مع رمز الدولة للقاهرة
+                            if "cairo" in location.lower() or "القاهرة" in location or "القاهره" in location:
+                                weather_data = st.session_state.weather_service.get_weather("Cairo,EG")
                                 if weather_data:
                                     st.session_state.weather_data = weather_data
                                     response = st.session_state.weather_service.format_weather_response(weather_data)
                                 else:
-                                    # محاولة مع رمز الدولة للقاهرة
-                                    if "cairo" in location.lower() or "القاهرة" in location or "القاهره" in location:
-                                        weather_data = st.session_state.weather_service.get_weather("Cairo,EG")
-                                        if weather_data:
-                                            st.session_state.weather_data = weather_data
-                                            response = st.session_state.weather_service.format_weather_response(weather_data)
-                                        else:
-                                            response = f"عذراً، لم أتمكن من العثور على معلومات الطقس لـ {location}. يرجى التحقق من اسم المدينة أو المفتاح."
-                                    else:
-                                        response = f"عذراً، لم أتمكن من العثور على معلومات الطقس لـ {location}. يرجى التحقق من اسم المدينة."
+                                    response = f"عذراً، لم أتمكن من العثور على معلومات الطقس لـ {location}. يرجى التحقق من اسم المدينة أو المفتاح."
                             else:
-                                response = f"عذراً، لم أتمكن من العثور على معلومات الطقس لـ {location}. يرجى التحقق من اسم المدينة أو المفتاح."
+                                response = f"عذراً، لم أتمكن من العثور على معلومات الطقس لـ {location}. يرجى التحقق من اسم المدينة."
                     else:
-                        # استخدام Gemini للرد العام
-                        response = st.session_state.gemini_service.generate_response(user_input)
-                    
-                    # عرض الرد
+                        response = f"عذراً، لم أتمكن من العثور على معلومات الطقس لـ {location}. يرجى التحقق من اسم المدينة أو المفتاح."
+            else:
+                # استخدام Gemini للرد العام
+                response = st.session_state.gemini_service.generate_response(user_input)
+            
+            # إذا كان الإدخال صوتي: تشغيل الصوت مباشرة بدون عرض النص
+            if is_voice:
+                # حفظ الرد للاستخدام لاحقاً (لزر التشغيل اليدوي)
+                st.session_state.last_voice_response = response
+                
+                # تشغيل الصوت مباشرة في thread منفصل
+                import threading
+                speech_service = st.session_state.speech_service
+                
+                def speak_async(service, text):
+                    service.speak(text)
+                
+                thread = threading.Thread(target=speak_async, args=(speech_service, response))
+                thread.daemon = True
+                thread.start()
+                
+                # لا نعرض النص ولا نضيف للرسائل عند الإدخال الصوتي
+                st.rerun()
+            else:
+                # إذا كان الإدخال نصي: عرض النص
+                with st.chat_message("assistant"):
                     st.write(response)
                     
                     # إضافة رد المساعد إلى الرسائل
@@ -266,39 +293,39 @@ def main():
                         "content": response
                     })
                     
-                    # تشغيل الصوت تلقائياً إذا كان الوضع الصوتي مفعلاً
-                    if voice_mode and st.session_state.speech_service and (st.session_state.speech_service.use_edge_tts or st.session_state.speech_service.use_gtts or st.session_state.speech_service.tts_engine):
-                        try:
-                            # تشغيل الصوت في thread منفصل لتجنب تعطيل الواجهة
-                            import threading
-                            speech_service = st.session_state.speech_service  # نسخ المرجع قبل thread
-                            
-                            def speak_async(service, text):
-                                service.speak(text)
-                            
-                            thread = threading.Thread(target=speak_async, args=(speech_service, response))
-                            thread.daemon = True
-                            thread.start()
-                        except Exception as e:
-                            print(f"خطأ في تشغيل الصوت: {e}")
+                    # تشغيل الصوت يدوياً إذا طلب المستخدم
+                    if voice_mode and st.session_state.speech_service:
+                        # يمكن إضافة زر لتشغيل الصوت هنا إذا لزم الأمر
+                        pass
                     
-                except Exception as e:
-                    error_str = str(e)
-                    # تحويل الأخطاء الإنجليزية إلى عربية
-                    if "404" in error_str or "not found" in error_str.lower():
-                        error_msg = "عذراً، حدث خطأ في الاتصال بخدمة الذكاء الاصطناعي. يرجى المحاولة مرة أخرى."
-                    elif "quota" in error_str.lower() or "limit" in error_str.lower():
-                        error_msg = "عذراً، تم تجاوز الحد المسموح من الاستخدام. يرجى المحاولة لاحقاً."
-                    elif "GEMINI_API_KEY" in error_str or "WEATHER_API_KEY" in error_str:
-                        error_msg = "عذراً، يرجى التحقق من إعدادات المفاتيح في ملف .env"
-                    else:
-                        error_msg = "عذراً، حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى."
-                    
-                    st.error(error_msg)
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": error_msg
-                    })
+        except Exception as e:
+            error_str = str(e)
+            # تحويل الأخطاء الإنجليزية إلى عربية
+            if "404" in error_str or "not found" in error_str.lower():
+                error_msg = "عذراً، حدث خطأ في الاتصال بخدمة الذكاء الاصطناعي. يرجى المحاولة مرة أخرى."
+            elif "quota" in error_str.lower() or "limit" in error_str.lower():
+                error_msg = "عذراً، تم تجاوز الحد المسموح من الاستخدام. يرجى المحاولة لاحقاً."
+            elif "GEMINI_API_KEY" in error_str or "WEATHER_API_KEY" in error_str:
+                error_msg = "عذراً، يرجى التحقق من إعدادات المفاتيح في ملف .env"
+            else:
+                error_msg = "عذراً، حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى."
+            
+            # عرض الخطأ فقط إذا كان الإدخال نصي
+            if not is_voice:
+                st.error(error_msg)
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": error_msg
+                })
+            else:
+                # إذا كان صوتي، نطق الخطأ
+                import threading
+                speech_service = st.session_state.speech_service
+                def speak_async(service, text):
+                    service.speak(text)
+                thread = threading.Thread(target=speak_async, args=(speech_service, error_msg))
+                thread.daemon = True
+                thread.start()
     
     # عرض بيانات الطقس
     if st.session_state.weather_data:
@@ -323,11 +350,19 @@ def main():
             col1, col2 = st.columns([3, 1])
             with col2:
                 if st.button("🔊 تشغيل آخر رد صوتياً", use_container_width=True):
+                    # البحث عن آخر رد (من الرسائل أو من الرد الصوتي الأخير)
                     last_message = None
-                    for msg in reversed(st.session_state.messages):
-                        if msg["role"] == "assistant":
-                            last_message = msg["content"]
-                            break
+                    
+                    # أولاً: جرب الرد الصوتي الأخير
+                    if hasattr(st.session_state, 'last_voice_response') and st.session_state.last_voice_response:
+                        last_message = st.session_state.last_voice_response
+                    else:
+                        # ثانياً: ابحث في الرسائل
+                        for msg in reversed(st.session_state.messages):
+                            if msg["role"] == "assistant":
+                                last_message = msg["content"]
+                                break
+                    
                     if last_message:
                         try:
                             import threading
