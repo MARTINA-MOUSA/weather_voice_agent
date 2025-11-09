@@ -16,7 +16,7 @@ class WeatherService:
     
     def __init__(self):
         if not Config.WEATHER_API_KEY:
-            raise ValueError("WEATHER_API_KEY غير موجود")
+            raise ValueError("WEATHER_API_KEY is missing")
         
         self.api_key = Config.WEATHER_API_KEY
         self.base_url = Config.WEATHER_BASE_URL
@@ -75,7 +75,7 @@ class WeatherService:
     
     def format_weather_response(self, weather_data: Dict) -> str:
         if not weather_data:
-            return "عذراً، لم أتمكن من الحصول على معلومات الطقس في الوقت الحالي."
+            return "Sorry, unable to get weather information at this time."
         
         try:
             city = weather_data['name']
@@ -98,7 +98,7 @@ class WeatherService:
             
             return response
         except KeyError:
-            return "عذراً، حدث خطأ في معالجة بيانات الطقس."
+            return "Error: Failed to process weather data."
     
     def get_weather_info(self, location: str) -> str:
         weather_data = self.get_weather(location)

@@ -170,7 +170,7 @@ def main():
                     
                     st.rerun()
                 except ValueError as e:
-                    st.error(f"❌ خطأ في الإعدادات: {e}")
+                    st.error(f"❌ Configuration Error: {e}")
         else:
             st.success("✅ التطبيق جاهز")
             if st.button("🔄 إعادة التهيئة", use_container_width=True):
@@ -204,7 +204,7 @@ def main():
     
     # التحقق من التهيئة
     if not st.session_state.initialized:
-        st.warning("⚠️ يرجى تهيئة التطبيق من الشريط الجانبي أولاً")
+        st.warning("⚠️ Please initialize the app from the sidebar first")
         return
     
     # منطقة المحادثة - مثل ChatGPT
@@ -291,7 +291,7 @@ def main():
             st.session_state.is_voice_input = True  # تمييز الإدخال الصوتي
             st.rerun()
         else:
-            st.warning("⚠️ لم يتم التعرف على الصوت. حاول مرة أخرى.")
+            st.warning("⚠️ Speech recognition failed. Please try again.")
     
     # تنظيف حالة الرد الصوتي (بدون عرض مؤشر منفصل - سيظهر في المحادثة فقط)
     is_speaking = st.session_state.get('is_speaking', False)
@@ -358,11 +358,11 @@ def main():
                                     st.session_state.weather_data = weather_data
                                     response = st.session_state.weather_service.format_weather_response(weather_data)
                                 else:
-                                    response = f"عذراً، لم أتمكن من العثور على معلومات الطقس لـ {location}. يرجى التحقق من اسم المدينة أو المفتاح."
+                                    response = f"Error: Unable to find weather information for {location}. Please check the city name or API key."
                             else:
-                                response = f"عذراً، لم أتمكن من العثور على معلومات الطقس لـ {location}. يرجى التحقق من اسم المدينة."
+                                response = f"Error: Unable to find weather information for {location}. Please check the city name."
                     else:
-                        response = f"عذراً، لم أتمكن من العثور على معلومات الطقس لـ {location}. يرجى التحقق من اسم المدينة أو المفتاح."
+                        response = f"Error: Unable to find weather information for {location}. Please check the city name or API key."
             else:
                 # استخدام Gemini للرد العام
                 response = st.session_state.gemini_service.generate_response(user_input)
@@ -433,15 +433,15 @@ def main():
                     
         except Exception as e:
             error_str = str(e)
-            # تحويل الأخطاء الإنجليزية إلى عربية
+            # Error messages in English
             if "404" in error_str or "not found" in error_str.lower():
-                error_msg = "عذراً، حدث خطأ في الاتصال بخدمة الذكاء الاصطناعي. يرجى المحاولة مرة أخرى."
+                error_msg = "Error: Connection error with AI service. Please try again."
             elif "quota" in error_str.lower() or "limit" in error_str.lower():
-                error_msg = "عذراً، تم تجاوز الحد المسموح من الاستخدام. يرجى المحاولة لاحقاً."
+                error_msg = "Error: Quota exceeded. Please try again later."
             elif "GEMINI_API_KEY" in error_str or "WEATHER_API_KEY" in error_str:
-                error_msg = "عذراً، يرجى التحقق من إعدادات المفاتيح في ملف .env"
+                error_msg = "Error: Please check API keys in .env file"
             else:
-                error_msg = "عذراً، حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى."
+                error_msg = "Error: Unexpected error occurred. Please try again."
             
             # عرض الخطأ فقط إذا كان الإدخال نصي
             if not is_voice:

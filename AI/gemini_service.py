@@ -16,7 +16,7 @@ class GeminiService:
     
     def __init__(self):
         if not Config.GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY غير موجود")
+            raise ValueError("GEMINI_API_KEY is missing")
         
         genai.configure(api_key=Config.GEMINI_API_KEY)
         self.model = genai.GenerativeModel(Config.GEMINI_MODEL)
@@ -77,9 +77,9 @@ class GeminiService:
                 if context:
                     prompt += f"السياق: {context}\n\n"
                 
-                prompt += f"""المستخدم: {user_query}
+                prompt += f"""User: {user_query}
 
-المساعد (أجب بالعربية فقط):"""
+Assistant (MUST respond in Arabic ONLY, regardless of user's language):"""
                 
                 # إضافة إعدادات الجيل لضمان الرد بالعربية
                 generation_config = {
@@ -95,7 +95,7 @@ class GeminiService:
                 
                 # التحقق من وجود response
                 if not response or not hasattr(response, 'text'):
-                    return "عذراً، لم أتمكن من الحصول على رد من خدمة الذكاء الاصطناعي."
+                    return "Sorry, unable to get response from AI service."
                 
                 result = response.text.strip()
                 
@@ -118,19 +118,19 @@ class GeminiService:
                         continue
                     else:
                         # فشلت جميع المحاولات
-                        return "عذراً، حدث خطأ في الخادم. يرجى المحاولة مرة أخرى بعد قليل."
+                        return "Sorry, server error occurred. Please try again later."
                 
-                # تحويل الأخطاء الإنجليزية إلى عربية
+                # Error messages in English
                 if "404" in error_msg or "not found" in error_msg.lower():
-                    return "عذراً، النموذج غير موجود. يرجى التحقق من اسم النموذج في الإعدادات."
+                    return "Error: Model not found. Please check the model name in settings."
                 elif "quota" in error_msg.lower() or "limit" in error_msg.lower():
-                    return "عذراً، تم تجاوز الحد المسموح من الاستخدام. يرجى المحاولة لاحقاً."
+                    return "Error: Quota exceeded. Please try again later."
                 elif "api" in error_msg.lower() and "key" in error_msg.lower():
-                    return "عذراً، يرجى التحقق من صحة مفتاح API في ملف .env"
+                    return "Error: Invalid API key. Please check your .env file."
                 elif "permission" in error_msg.lower() or "forbidden" in error_msg.lower():
-                    return "عذراً، لا توجد صلاحية للوصول إلى الخدمة. يرجى التحقق من المفتاح."
+                    return "Error: Access denied. Please check your API key."
                 else:
-                    return "عذراً، حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى."
+                    return "Error: Connection error. Please try again."
         
-        return "عذراً، فشلت المحاولة بعد عدة محاولات. يرجى المحاولة لاحقاً."
+        return "Error: Failed after multiple attempts. Please try again later."
 
