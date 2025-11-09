@@ -120,11 +120,14 @@ def main():
                     st.session_state.initialized = True
                     
                     # التحقق من محرك الصوت
-                    if st.session_state.speech_service.use_gtts or st.session_state.speech_service.tts_engine:
-                        if st.session_state.speech_service.use_gtts:
-                            st.success("✅ تم تهيئة التطبيق بنجاح! 🔊 الصوت متاح (gTTS - يدعم العربية)")
-                        else:
-                            st.success("✅ تم تهيئة التطبيق بنجاح! 🔊 الصوت متاح")
+                    if st.session_state.speech_service.use_gtts and st.session_state.speech_service.pygame_available:
+                        st.success("✅ تم تهيئة التطبيق بنجاح! 🔊 الصوت متاح (gTTS + pygame - تشغيل مباشر من الذاكرة بدون ملفات)")
+                    elif st.session_state.speech_service.use_edge_tts:
+                        st.success("✅ تم تهيئة التطبيق بنجاح! 🔊 الصوت متاح (edge-tts - يدعم العربية)")
+                    elif st.session_state.speech_service.use_gtts:
+                        st.success("✅ تم تهيئة التطبيق بنجاح! 🔊 الصوت متاح (gTTS - يدعم العربية)")
+                    elif st.session_state.speech_service.tts_engine:
+                        st.success("✅ تم تهيئة التطبيق بنجاح! 🔊 الصوت متاح (pyttsx3)")
                     else:
                         st.warning("✅ تم تهيئة التطبيق بنجاح! ⚠️ محرك الصوت غير متاح - قم بتثبيت: pip install gtts pygame")
                     
@@ -264,7 +267,7 @@ def main():
                     })
                     
                     # تشغيل الصوت تلقائياً إذا كان الوضع الصوتي مفعلاً
-                    if voice_mode and st.session_state.speech_service and (st.session_state.speech_service.use_gtts or st.session_state.speech_service.tts_engine):
+                    if voice_mode and st.session_state.speech_service and (st.session_state.speech_service.use_edge_tts or st.session_state.speech_service.use_gtts or st.session_state.speech_service.tts_engine):
                         try:
                             # تشغيل الصوت في thread منفصل لتجنب تعطيل الواجهة
                             import threading
@@ -315,7 +318,7 @@ def main():
                 st.image(icon_url, width=100)
         
         # زر تشغيل الصوت يدوياً
-        if st.session_state.speech_service and (st.session_state.speech_service.use_gtts or st.session_state.speech_service.tts_engine):
+        if st.session_state.speech_service and (st.session_state.speech_service.use_edge_tts or st.session_state.speech_service.use_gtts or st.session_state.speech_service.tts_engine):
             st.markdown("---")
             col1, col2 = st.columns([3, 1])
             with col2:
