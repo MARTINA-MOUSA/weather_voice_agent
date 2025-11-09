@@ -22,7 +22,6 @@ class WeatherService:
         self.base_url = Config.WEATHER_BASE_URL
     
     def get_weather(self, location: str) -> Optional[Dict]:
-        """الحصول على معلومات الطقس لموقع معين"""
         if not location:
             return None
         
