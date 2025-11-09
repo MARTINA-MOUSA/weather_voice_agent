@@ -78,6 +78,42 @@ st.markdown("""
         0%, 100% { opacity: 1; }
         50% { opacity: 0.3; }
     }
+    /* تصميم حقل الإدخال مثل الصورة */
+    .custom-input-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: white;
+        border-radius: 25px;
+        border: 1px solid #e0e0e0;
+        margin: 10px 0;
+    }
+    .plus-icon {
+        font-size: 1.5rem;
+        color: #333;
+        cursor: pointer;
+        padding: 5px;
+    }
+    .mic-icon-right {
+        font-size: 1.3rem;
+        color: #333;
+        cursor: pointer;
+        padding: 5px;
+    }
+    .sound-wave-icon {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        background: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    .sound-wave-icon.active {
+        animation: pulse 1.5s ease-in-out infinite;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -163,6 +199,7 @@ def main():
             st.session_state.last_voice_response = None
             st.session_state.is_recording = False
             st.session_state.is_speaking = False
+            st.session_state.pending_voice_input = None
             st.rerun()
     
     # التحقق من التهيئة
@@ -179,49 +216,99 @@ def main():
             if message.get("is_voice_response", False) and not st.session_state.get('is_speaking', False):
                 st.markdown('<span class="voice-indicator">🔊</span> *تم الرد صوتياً*', unsafe_allow_html=True)
     
-    # مؤشر التسجيل الصوتي
-    if st.session_state.get('is_recording', False):
-        st.markdown('<div class="recording-indicator">🎤 جارٍ التسجيل...</div>', unsafe_allow_html=True)
-    
-    # مؤشر الرد الصوتي (يظهر فقط أثناء الرد)
-    if st.session_state.get('is_speaking', False):
-        st.markdown('<div class="voice-indicator">🔊 جاري الرد صوتياً...</div>', unsafe_allow_html=True)
-        # تحديث تلقائي للواجهة أثناء الرد (كل ثانية)
-        import time
-        time.sleep(1)
-        # إعادة تحميل الصفحة لتحديث الحالة
-        if st.session_state.get('is_speaking', False):
-            st.rerun()
-    
     # التحقق من وجود إدخال صوتي معلق
     pending_voice = st.session_state.get('pending_voice_input', None)
     
-    # منطقة الإدخال في الأسفل - مثل ChatGPT
-    # زر التسجيل الصوتي بجانب chat_input
-    input_col1, input_col2 = st.columns([1, 20])
+    # منطقة الإدخال في الأسفل - مثل الصورة
+    # حقل الإدخال في المنتصف، أيقونة mic على اليمين
+    
+    # استخدام columns لإنشاء التصميم المطلوب
+    input_col1, input_col2, input_col3 = st.columns([8, 1, 1])
     
     with input_col1:
-        # زر التسجيل الصوتي
-        if st.button("🎤", use_container_width=True, help="اضغط للتسجيل الصوتي - سيتم الرد صوتياً", key="mic_button"):
+        # حقل الإدخال في المنتصف
+        text_input = st.chat_input("Ask anything")
+    
+    with input_col2:
+        # أيقونة mic على اليمين
+        if st.button("🎤", key="mic_button", help="اضغط للتسجيل الصوتي", use_container_width=True):
             st.session_state.is_recording = True
             st.rerun()
     
-    # معالجة التسجيل الصوتي
-    if st.session_state.get('is_recording', False) and not pending_voice:
-        with st.spinner("🎤 جارٍ الاستماع..."):
-            voice_input = st.session_state.speech_service.listen()
-            st.session_state.is_recording = False
-            if voice_input:
-                # حفظ الإدخال الصوتي للمعالجة
-                st.session_state.pending_voice_input = voice_input
-                st.session_state.is_voice_input = True  # تمييز الإدخال الصوتي
-                st.rerun()
-            else:
-                st.warning("⚠️ لم يتم التعرف على الصوت. حاول مرة أخرى.")
+    with input_col3:
+        # أيقونة الموجات الصوتية (تظهر عند التحدث)
+        is_speaking = st.session_state.get('is_speaking', False)
+        if is_speaking:
+            st.markdown("""
+            <div class="sound-wave-icon active" style="margin: 0 auto;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                </svg>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown('<div style="width: 35px; height: 35px;"></div>', unsafe_allow_html=True)
     
-    with input_col2:
-        # إدخال النص (Send button)
-        text_input = st.chat_input("اكتب سؤالك هنا أو اضغط 🎤 للتسجيل الصوتي...")
+    # تعديل CSS لـ chat_input ليطابق التصميم
+    st.markdown("""
+    <style>
+    /* إخفاء الحدود والظلال من chat_input */
+    .stChatInputContainer {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+    .stChatInputContainer > div {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    .stChatInputContainer input {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    /* تصميم الأيقونات */
+    .plus-icon {
+        font-size: 1.5rem;
+        color: #333;
+        cursor: pointer;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # معالجة التسجيل الصوتي (بعد chat_input)
+    if st.session_state.get('is_recording', False) and not pending_voice:
+        # عرض مؤشر التسجيل
+        st.markdown('<div class="recording-indicator">🎤 جارٍ التسجيل...</div>', unsafe_allow_html=True)
+        # تسجيل الصوت - يتوقف فوراً بعد انتهاء الكلام
+        voice_input = st.session_state.speech_service.listen()
+        st.session_state.is_recording = False  # إيقاف التسجيل فوراً بعد انتهاء الكلام
+        if voice_input:
+            # حفظ الإدخال الصوتي للمعالجة
+            st.session_state.pending_voice_input = voice_input
+            st.session_state.is_voice_input = True  # تمييز الإدخال الصوتي
+            st.rerun()
+        else:
+            st.warning("⚠️ لم يتم التعرف على الصوت. حاول مرة أخرى.")
+    
+    # تنظيف حالة الرد الصوتي (بدون عرض مؤشر منفصل - سيظهر في المحادثة فقط)
+    is_speaking = st.session_state.get('is_speaking', False)
+    speak_start_time = st.session_state.get('speak_start_time', None)
+    
+    # التحقق من أن الصوت لا يزال قيد التشغيل (أقل من 60 ثانية - وقت معقول للرد)
+    if is_speaking and speak_start_time:
+        import time
+        elapsed_time = time.time() - speak_start_time
+        # إذا مر أكثر من 60 ثانية، نعتبر أن الصوت انتهى
+        if elapsed_time > 60:
+            st.session_state.is_speaking = False
+            st.session_state.speak_start_time = None
+    elif speak_start_time is not None and not is_speaking:
+        # إذا كان هناك وقت بدء لكن is_speaking = False، يعني الصوت انتهى
+        # تنظيف الحالة
+        st.session_state.speak_start_time = None
     
     # استخدام الإدخال الصوتي المعلق أو النصي
     user_input = pending_voice if pending_voice else text_input
@@ -298,10 +385,12 @@ def main():
                 
                 with st.chat_message("assistant"):
                     st.write(response)
-                    # لا نعرض علامة "تم الرد" هنا - سنعرضها بعد انتهاء الصوت
+                    # لا نعرض مؤشر "جاري الرد صوتياً" هنا - سيتم الرد مباشرة بدون تأخير
                 
                 # تفعيل مؤشر الرد الصوتي
+                import time
                 st.session_state.is_speaking = True
+                st.session_state.speak_start_time = time.time()  # حفظ وقت البدء
                 
                 # تشغيل الصوت مباشرة في thread منفصل
                 import threading
@@ -309,13 +398,21 @@ def main():
                 
                 def speak_async(service, text):
                     try:
+                        # تشغيل الصوت - سينتظر حتى انتهاء الصوت تلقائياً
                         service.speak(text)
                     finally:
-                        # إيقاف المؤشر بعد انتهاء الصوت
-                        import time
-                        time.sleep(0.5)  # انتظار قصير للتأكد من انتهاء الصوت
-                        # تحديث الحالة بدون استخدام st.rerun() في thread
-                        st.session_state.is_speaking = False
+                        # إيقاف المؤشر بعد انتهاء الصوت مباشرة (بدون انتظار إضافي)
+                        # تحديث الحالة - يجب أن نتحقق من وجود session_state
+                        try:
+                            # استخدام طريقة آمنة لتحديث session_state من thread
+                            if hasattr(st, 'session_state'):
+                                # نسخ القيمة الحالية
+                                if 'is_speaking' in st.session_state:
+                                    st.session_state.is_speaking = False
+                                    st.session_state.speak_start_time = None
+                        except Exception as e:
+                            # تجاهل الأخطاء في thread (مثل missing ScriptRunContext)
+                            pass
                 
                 thread = threading.Thread(target=speak_async, args=(speech_service, response))
                 thread.daemon = True

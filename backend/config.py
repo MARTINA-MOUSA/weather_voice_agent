@@ -17,8 +17,9 @@ class Config:
     
     # Speech Recognition
     SPEECH_LANGUAGE = "ar-EG"
-    SPEECH_TIMEOUT = 5
-    SPEECH_PHRASE_LIMIT = 10
+    SPEECH_TIMEOUT = 5  # وقت انتظار قبل بدء التسجيل (ثواني)
+    SPEECH_PHRASE_LIMIT = 30  # حد أقصى 30 ثانية للجملة (لسماع الكلام كله)
+    SPEECH_PAUSE_THRESHOLD = 1.0  # وقت الصمت المسموح قبل التوقف (ثواني)
     
     # Text to Speech
     TTS_RATE = 150

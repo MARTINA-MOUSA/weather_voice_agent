@@ -93,14 +93,23 @@ class SpeechService:
             timeout = timeout or Config.SPEECH_TIMEOUT
             phrase_time_limit = phrase_time_limit or Config.SPEECH_PHRASE_LIMIT
             
+            # زيادة وقت الصمت المسموح قبل التوقف (لسماع الكلام كله)
+            pause_threshold = getattr(Config, 'SPEECH_PAUSE_THRESHOLD', 1.0)
+            self.recognizer.pause_threshold = pause_threshold
+            
             with self.microphone as source:
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                # تعديل الضوضاء المحيطة (أسرع - 0.2 ثانية)
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
+                
+                # الاستماع - يتوقف بعد فترة صمت (pause_threshold)
+                # phrase_time_limit يحدد المدة القصوى للجملة
                 audio = self.recognizer.listen(
                     source, 
                     timeout=timeout, 
                     phrase_time_limit=phrase_time_limit
                 )
             
+            # التعرف على الكلام فوراً (بدون انتظار)
             text = self.recognizer.recognize_google(
                 audio, 
                 language=Config.SPEECH_LANGUAGE
@@ -161,9 +170,12 @@ class SpeechService:
                 mixer.music.load(fp)
                 mixer.music.play()
                 
-                # انتظار انتهاء التشغيل
+                # انتظار انتهاء التشغيل بشكل كامل
                 while mixer.music.get_busy():
-                    time.sleep(0.1)
+                    time.sleep(0.05)  # فحص أكثر تكراراً
+                
+                # انتظار إضافي للتأكد من انتهاء الصوت تماماً
+                time.sleep(0.2)
                 
                 # لا نغلق mixer حتى لا نضطر لإعادة تهيئته
                 fp.close()
@@ -219,10 +231,13 @@ class SpeechService:
                             pygame.mixer.music.load(tmp_file_path)
                             pygame.mixer.music.play()
                             
-                            # انتظار انتهاء التشغيل
+                            # انتظار انتهاء التشغيل بشكل كامل
                             import time
                             while pygame.mixer.music.get_busy():
-                                time.sleep(0.1)
+                                time.sleep(0.05)  # فحص أكثر تكراراً
+                            
+                            # انتظار إضافي للتأكد من انتهاء الصوت تماماً
+                            time.sleep(0.2)
                             
                             pygame.mixer.quit()
                             
