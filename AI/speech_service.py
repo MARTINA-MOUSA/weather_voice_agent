@@ -13,7 +13,6 @@ import speech_recognition as sr
 from typing import Optional
 from backend.config import Config
 
-# محاولة استيراد edge-tts (الأفضل - يدعم العربية بدون ملفات)
 try:
     import edge_tts
     import asyncio
@@ -21,14 +20,12 @@ try:
 except ImportError:
     EDGE_TTS_AVAILABLE = False
 
-# محاولة استيراد gTTS كبديل
 try:
     from gtts import gTTS
     GTTS_AVAILABLE = True
 except ImportError:
     GTTS_AVAILABLE = False
 
-# محاولة استيراد pyttsx3 كبديل
 try:
     import pyttsx3
     PYTTSX3_AVAILABLE = True
@@ -39,22 +36,17 @@ except ImportError:
 class SpeechService:
     
     def __init__(self):
-        # تهيئة التعرف على الصوت
         self.recognizer = sr.Recognizer()
         self.microphone = sr.Microphone()
         
-        # تهيئة تحويل النص إلى كلام
-        # الأولوية: gTTS مع pygame (تشغيل مباشر من الذاكرة) > edge-tts > pyttsx3
         self.tts_engine = None
         self.use_edge_tts = False
         self.use_gtts = False
         self.pyttsx3_available = PYTTSX3_AVAILABLE
         self.pygame_available = False
         
-        # التحقق من pygame
         try:
             from pygame import mixer
-            # محاولة تهيئة mixer مسبقاً
             try:
                 if not mixer.get_init():
                     mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
@@ -69,16 +61,12 @@ class SpeechService:
         except Exception:
             self.pygame_available = False
         
-        # استخدام gTTS مع pygame أولاً (تشغيل مباشر من الذاكرة بدون ملفات)
         if GTTS_AVAILABLE and self.pygame_available:
             self.use_gtts = True
-        # إذا لم يعمل gTTS مع pygame، استخدم edge-tts
         elif EDGE_TTS_AVAILABLE:
             self.use_edge_tts = True
-        # إذا لم يعمل edge-tts، استخدم gTTS فقط
         elif GTTS_AVAILABLE:
             self.use_gtts = True
-        # كحل أخير، استخدم pyttsx3 (لكن فقط خارج threads)
         elif PYTTSX3_AVAILABLE:
             try:
                 self.tts_engine = pyttsx3.init()
@@ -88,28 +76,22 @@ class SpeechService:
                 self.tts_engine = None
     
     def listen(self, timeout: int = None, phrase_time_limit: int = None) -> Optional[str]:
-        """الاستماع إلى إدخال المستخدم الصوتي"""
         try:
             timeout = timeout or Config.SPEECH_TIMEOUT
             phrase_time_limit = phrase_time_limit or Config.SPEECH_PHRASE_LIMIT
             
-            # زيادة وقت الصمت المسموح قبل التوقف (لسماع الكلام كله)
             pause_threshold = getattr(Config, 'SPEECH_PAUSE_THRESHOLD', 1.0)
             self.recognizer.pause_threshold = pause_threshold
             
             with self.microphone as source:
-                # تعديل الضوضاء المحيطة (أسرع - 0.2 ثانية)
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
                 
-                # الاستماع - يتوقف بعد فترة صمت (pause_threshold)
-                # phrase_time_limit يحدد المدة القصوى للجملة
                 audio = self.recognizer.listen(
                     source, 
                     timeout=timeout, 
                     phrase_time_limit=phrase_time_limit
                 )
             
-            # التعرف على الكلام فوراً (بدون انتظار)
             text = self.recognizer.recognize_google(
                 audio, 
                 language=Config.SPEECH_LANGUAGE
@@ -120,24 +102,19 @@ class SpeechService:
         except sr.UnknownValueError:
             return None
         except sr.RequestError:
-            # لا نطبع الأخطاء للمستخدم
             return None
         except Exception:
-            # لا نطبع الأخطاء للمستخدم
             return None
     
     def speak(self, text: str):
-        """تحويل النص إلى كلام"""
         if not text or not text.strip():
             return
         
-        # تنظيف النص من الرموز التي قد تسبب مشاكل
         clean_text = text.replace("🌤️", "").replace("🌡️", "").replace("💧", "").replace("☁️", "").replace("💨", "").replace("📊", "").replace("📍", "").strip()
         
         if not clean_text:
             return
         
-        # استخدام gTTS مع pygame (تشغيل مباشر من الذاكرة بدون ملفات)
         if self.use_gtts and self.pygame_available:
             try:
                 from gtts import gTTS
@@ -145,50 +122,37 @@ class SpeechService:
                 import io
                 import time
                 
-                # إنشاء الصوت في الذاكرة
                 tts = gTTS(text=clean_text, lang='ar', slow=False)
                 
-                # حفظ في ذاكرة مؤقتة بدلاً من ملف
                 fp = io.BytesIO()
                 tts.write_to_fp(fp)
                 fp.seek(0)
                 
-                # تهيئة mixer بشكل صحيح
                 try:
-                    # محاولة تهيئة mixer
                     if not mixer.get_init():
                         mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
                 except:
-                    # إذا فشل، جرب تهيئة بسيطة
                     try:
                         mixer.init()
                     except:
-                        # إذا فشل مرة أخرى، استخدم subprocess
                         raise Exception("pygame mixer initialization failed")
                 
-                # تشغيل مباشر من الذاكرة
                 mixer.music.load(fp)
                 mixer.music.play()
                 
-                # انتظار انتهاء التشغيل بشكل كامل
                 while mixer.music.get_busy():
-                    time.sleep(0.05)  # فحص أكثر تكراراً
+                    time.sleep(0.05)  
                 
-                # انتظار إضافي للتأكد من انتهاء الصوت تماماً
                 time.sleep(0.2)
                 
-                # لا نغلق mixer حتى لا نضطر لإعادة تهيئته
                 fp.close()
                 
                 return
             except Exception as e:
                 print(f"خطأ في gTTS مع pygame: {e}")
-                # استمر للبديل
         
-        # استخدام edge-tts (يدعم العربية بشكل أفضل)
         if self.use_edge_tts:
             try:
-                # قائمة الأصوات العربية المتاحة
                 arabic_voices = [
                     "ar-SA-X-NaayfNeural",
                     "ar-EG-SalmaNeural",
@@ -197,7 +161,6 @@ class SpeechService:
                     "ar-EG-ShakirNeural"
                 ]
                 
-                # استخدام ملف مؤقت في الذاكرة (RAM) بدلاً من القرص
                 import io
                 import subprocess
                 import platform
@@ -215,33 +178,26 @@ class SpeechService:
                         if len(audio_data) == 0:
                             return False
                         
-                        # محاولة استخدام pygame لتشغيل مباشر من الذاكرة
                         try:
                             import pygame
-                            # حفظ في ملف مؤقت صغير جداً للتشغيل
                             tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
                             tmp_file.write(audio_data)
                             tmp_file_path = tmp_file.name
                             tmp_file.close()
                             
-                            # تهيئة pygame.mixer
                             pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
                             
-                            # تشغيل الملف
                             pygame.mixer.music.load(tmp_file_path)
                             pygame.mixer.music.play()
                             
-                            # انتظار انتهاء التشغيل بشكل كامل
                             import time
                             while pygame.mixer.music.get_busy():
-                                time.sleep(0.05)  # فحص أكثر تكراراً
+                                time.sleep(0.05)  
                             
-                            # انتظار إضافي للتأكد من انتهاء الصوت تماماً
                             time.sleep(0.2)
                             
                             pygame.mixer.quit()
                             
-                            # حذف الملف فوراً بعد التشغيل
                             try:
                                 os.unlink(tmp_file_path)
                             except:
@@ -249,12 +205,10 @@ class SpeechService:
                             
                             return True
                         except ImportError:
-                            # إذا لم يكن pygame متاحاً، استخدم subprocess
                             pass
                         except Exception as e:
                             print(f"خطأ في pygame: {e}")
                         
-                        # استخدام subprocess كبديل (يحفظ ملف مؤقت لكن يحذفه فوراً)
                         tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
                         tmp_file.write(audio_data)
                         tmp_file_path = tmp_file.name
@@ -269,7 +223,6 @@ class SpeechService:
                         else:
                             subprocess.run(['mpg123', tmp_file_path], check=False)
                         
-                        # حذف الملف فوراً بعد التشغيل
                         import time
                         time.sleep(0.5)
                         try:
@@ -282,13 +235,11 @@ class SpeechService:
                         print(f"فشل مع الصوت {voice_name}: {e}")
                         return False
                 
-                # إنشاء event loop جديد للthread
                 def run_async():
                     try:
                         new_loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(new_loop)
                         
-                        # جرب كل صوت حتى ينجح واحد
                         for voice in arabic_voices:
                             try:
                                 result = new_loop.run_until_complete(generate_and_play(voice))
@@ -302,7 +253,6 @@ class SpeechService:
                     except Exception as e:
                         print(f"خطأ في run_async: {e}")
                 
-                # تشغيل في thread منفصل
                 async_thread = threading.Thread(target=run_async)
                 async_thread.daemon = True
                 async_thread.start()
@@ -313,18 +263,14 @@ class SpeechService:
             except Exception as e:
                 print(f"خطأ في edge-tts: {e}")
         
-        # استخدام gTTS كبديل (بدون pygame - يحفظ ملف مؤقت)
         if GTTS_AVAILABLE and not self.pygame_available:
             try:
-                # إنشاء ملف صوتي مؤقت
                 tts = gTTS(text=clean_text, lang='ar', slow=False)
                 
-                # حفظ في ملف مؤقت
                 with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tmp_file:
                     tmp_file_path = tmp_file.name
                     tts.save(tmp_file_path)
                 
-                # تشغيل الملف
                 import subprocess
                 import platform
                 import time
@@ -338,7 +284,6 @@ class SpeechService:
                     else:
                         subprocess.run(['mpg123', tmp_file_path], check=False)
                     
-                    # حذف الملف بعد قليل
                     time.sleep(1)
                     try:
                         os.unlink(tmp_file_path)
@@ -350,7 +295,6 @@ class SpeechService:
             except Exception as e:
                 print(f"خطأ في gTTS: {e}")
         
-        # إذا فشلت جميع المحاولات
         if not self.use_edge_tts and not GTTS_AVAILABLE:
             print("تحذير: لا يوجد محرك TTS متاح")
 
