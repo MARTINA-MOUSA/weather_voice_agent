@@ -189,6 +189,7 @@ def main():
         # تحديث تلقائي للواجهة أثناء الرد (كل ثانية)
         import time
         time.sleep(1)
+        # إعادة تحميل الصفحة لتحديث الحالة
         if st.session_state.get('is_speaking', False):
             st.rerun()
     
@@ -313,6 +314,7 @@ def main():
                         # إيقاف المؤشر بعد انتهاء الصوت
                         import time
                         time.sleep(0.5)  # انتظار قصير للتأكد من انتهاء الصوت
+                        # تحديث الحالة بدون استخدام st.rerun() في thread
                         st.session_state.is_speaking = False
                 
                 thread = threading.Thread(target=speak_async, args=(speech_service, response))
