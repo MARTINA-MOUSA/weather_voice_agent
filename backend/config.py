@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 
-# تحميل متغيرات البيئة
 load_dotenv()
 
 class Config:
@@ -47,7 +46,7 @@ Assistant: أهلاً! من فضلك أخبرني عن المدينة التي �
     
     @classmethod
     def validate(cls):
-        """التحقق من صحة الإعدادات"""
+
         errors = []
         
         if not cls.GEMINI_API_KEY:
