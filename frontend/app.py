@@ -18,7 +18,7 @@ from backend.config import Config
 from AI.gemini_service import GeminiService
 from backend.weather_service import WeatherService
 from AI.speech_service import SpeechService
-from backend.utils.helpers import format_weather_card
+# format_weather_card لم يعد مستخدماً
 
 # إعدادات الصفحة
 st.set_page_config(
@@ -57,6 +57,27 @@ st.markdown("""
     .stButton>button:hover {
         background-color: #2a5298;
     }
+    .voice-indicator {
+        display: inline-block;
+        animation: pulse 1.5s ease-in-out infinite;
+        color: #1e3c72;
+        font-size: 1.2rem;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    .recording-indicator {
+        display: inline-block;
+        animation: blink 1s ease-in-out infinite;
+        color: #dc3545;
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -71,30 +92,8 @@ if 'initialized' not in st.session_state:
     st.session_state.pending_voice_input = None
     st.session_state.is_voice_input = False  # للتمييز بين الإدخال الصوتي والنصي
     st.session_state.last_voice_response = None  # حفظ آخر رد صوتي
-
-def display_weather_card(weather_data: dict):
-    """عرض بطاقة الطقس"""
-    if not weather_data:
-        return
-    
-    card_data = format_weather_card(weather_data)
-    
-    if not card_data:
-        return
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("🌡️ الحرارة", f"{card_data['temperature']}°C")
-        st.metric("🌡️ الشعور", f"{card_data['feels_like']}°C")
-    
-    with col2:
-        st.metric("💧 الرطوبة", f"{card_data['humidity']}%")
-        st.metric("💨 الرياح", f"{card_data['wind_speed']} م/ث")
-    
-    with col3:
-        st.metric("📊 الضغط", f"{card_data['pressure']} hPa")
-        st.metric("☁️ الحالة", card_data['description'])
+    st.session_state.is_recording = False  # حالة التسجيل
+    st.session_state.is_speaking = False  # حالة الرد الصوتي
 
 def main():
     """الدالة الرئيسية للتطبيق"""
@@ -149,14 +148,6 @@ def main():
                 st.rerun()
         
         st.markdown("---")
-        
-        # وضع الصوت
-        voice_mode = st.checkbox("🎤 تفعيل الوضع الصوتي", value=False)
-        
-        if voice_mode:
-            st.info("💡 اضغط على زر '🎤 تحدث' للبدء")
-        
-        st.markdown("---")
         st.header("📝 أمثلة على الأسئلة")
         st.markdown("""
         - ما هو الطقس في القاهرة؟
@@ -166,10 +157,12 @@ def main():
         """)
         
         st.markdown("---")
-        if st.button("🗑️ مسح المحادثة"):
+        if st.button("🗑️ مسح المحادثة", use_container_width=True):
             st.session_state.messages = []
             st.session_state.weather_data = None
             st.session_state.last_voice_response = None
+            st.session_state.is_recording = False
+            st.session_state.is_speaking = False
             st.rerun()
     
     # التحقق من التهيئة
@@ -177,34 +170,57 @@ def main():
         st.warning("⚠️ يرجى تهيئة التطبيق من الشريط الجانبي أولاً")
         return
     
-    # منطقة المحادثة
-    st.header("💬 المحادثة")
-    
+    # منطقة المحادثة - مثل ChatGPT
     # عرض الرسائل السابقة
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.write(message["content"])
+            # إذا كان هناك رد صوتي، عرض علامة AI صوتية (فقط إذا انتهى الصوت)
+            if message.get("is_voice_response", False) and not st.session_state.get('is_speaking', False):
+                st.markdown('<span class="voice-indicator">🔊</span> *تم الرد صوتياً*', unsafe_allow_html=True)
+    
+    # مؤشر التسجيل الصوتي
+    if st.session_state.get('is_recording', False):
+        st.markdown('<div class="recording-indicator">🎤 جارٍ التسجيل...</div>', unsafe_allow_html=True)
+    
+    # مؤشر الرد الصوتي (يظهر فقط أثناء الرد)
+    if st.session_state.get('is_speaking', False):
+        st.markdown('<div class="voice-indicator">🔊 جاري الرد صوتياً...</div>', unsafe_allow_html=True)
+        # تحديث تلقائي للواجهة أثناء الرد (كل ثانية)
+        import time
+        time.sleep(1)
+        if st.session_state.get('is_speaking', False):
+            st.rerun()
     
     # التحقق من وجود إدخال صوتي معلق
     pending_voice = st.session_state.get('pending_voice_input', None)
     
-    # زر الصوت
-    if voice_mode:
-        col1, col2 = st.columns([3, 1])
-        with col2:
-            if st.button("🎤 تحدث", use_container_width=True):
-                with st.spinner("🎤 جارٍ الاستماع..."):
-                    voice_input = st.session_state.speech_service.listen()
-                    if voice_input:
-                        # حفظ الإدخال الصوتي للمعالجة
-                        st.session_state.pending_voice_input = voice_input
-                        st.session_state.is_voice_input = True  # تمييز الإدخال الصوتي
-                        st.rerun()
-                    else:
-                        st.warning("⚠️ لم يتم التعرف على الصوت. حاول مرة أخرى.")
+    # منطقة الإدخال في الأسفل - مثل ChatGPT
+    # زر التسجيل الصوتي بجانب chat_input
+    input_col1, input_col2 = st.columns([1, 20])
     
-    # إدخال النص
-    text_input = st.chat_input("اكتب سؤالك هنا...")
+    with input_col1:
+        # زر التسجيل الصوتي
+        if st.button("🎤", use_container_width=True, help="اضغط للتسجيل الصوتي - سيتم الرد صوتياً", key="mic_button"):
+            st.session_state.is_recording = True
+            st.rerun()
+    
+    # معالجة التسجيل الصوتي
+    if st.session_state.get('is_recording', False) and not pending_voice:
+        with st.spinner("🎤 جارٍ الاستماع..."):
+            voice_input = st.session_state.speech_service.listen()
+            st.session_state.is_recording = False
+            if voice_input:
+                # حفظ الإدخال الصوتي للمعالجة
+                st.session_state.pending_voice_input = voice_input
+                st.session_state.is_voice_input = True  # تمييز الإدخال الصوتي
+                st.rerun()
+            else:
+                st.warning("⚠️ لم يتم التعرف على الصوت. حاول مرة أخرى.")
+    
+    with input_col2:
+        # إدخال النص (Send button)
+        text_input = st.chat_input("اكتب سؤالك هنا أو اضغط 🎤 للتسجيل الصوتي...")
     
     # استخدام الإدخال الصوتي المعلق أو النصي
     user_input = pending_voice if pending_voice else text_input
@@ -212,12 +228,11 @@ def main():
     if user_input:
         is_voice = st.session_state.is_voice_input if pending_voice else False
         
-        # إضافة رسالة المستخدم (فقط إذا كان نصي)
-        if not is_voice:
-            st.session_state.messages.append({
-                "role": "user",
-                "content": user_input
-            })
+        # إضافة رسالة المستخدم (في كل الحالات)
+        st.session_state.messages.append({
+            "role": "user",
+            "content": user_input
+        })
         
         # مسح الإدخال الصوتي المعلق بعد استخدامه
         if pending_voice:
@@ -264,39 +279,58 @@ def main():
                 # استخدام Gemini للرد العام
                 response = st.session_state.gemini_service.generate_response(user_input)
             
-            # إذا كان الإدخال صوتي: تشغيل الصوت مباشرة بدون عرض النص
+            # إذا كان الإدخال صوتي: تشغيل الصوت مباشرة مع عرض علامة AI صوتية
             if is_voice:
-                # حفظ الرد للاستخدام لاحقاً (لزر التشغيل اليدوي)
+                # حفظ الرد للاستخدام لاحقاً
                 st.session_state.last_voice_response = response
+                
+                # إضافة رد المساعد مع علامة صوتية
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": response,
+                    "is_voice_response": True  # علامة للرد الصوتي
+                })
+                
+                # عرض الرسائل الجديدة
+                with st.chat_message("user"):
+                    st.write(user_input)
+                
+                with st.chat_message("assistant"):
+                    st.write(response)
+                    # لا نعرض علامة "تم الرد" هنا - سنعرضها بعد انتهاء الصوت
+                
+                # تفعيل مؤشر الرد الصوتي
+                st.session_state.is_speaking = True
                 
                 # تشغيل الصوت مباشرة في thread منفصل
                 import threading
                 speech_service = st.session_state.speech_service
                 
                 def speak_async(service, text):
-                    service.speak(text)
+                    try:
+                        service.speak(text)
+                    finally:
+                        # إيقاف المؤشر بعد انتهاء الصوت
+                        import time
+                        time.sleep(0.5)  # انتظار قصير للتأكد من انتهاء الصوت
+                        st.session_state.is_speaking = False
                 
                 thread = threading.Thread(target=speak_async, args=(speech_service, response))
                 thread.daemon = True
                 thread.start()
                 
-                # لا نعرض النص ولا نضيف للرسائل عند الإدخال الصوتي
                 st.rerun()
             else:
-                # إذا كان الإدخال نصي: عرض النص
+                # إذا كان الإدخال نصي: عرض النص فقط
                 with st.chat_message("assistant"):
                     st.write(response)
                     
                     # إضافة رد المساعد إلى الرسائل
                     st.session_state.messages.append({
                         "role": "assistant",
-                        "content": response
+                        "content": response,
+                        "is_voice_response": False
                     })
-                    
-                    # تشغيل الصوت يدوياً إذا طلب المستخدم
-                    if voice_mode and st.session_state.speech_service:
-                        # يمكن إضافة زر لتشغيل الصوت هنا إذا لزم الأمر
-                        pass
                     
         except Exception as e:
             error_str = str(e)
@@ -327,58 +361,8 @@ def main():
                 thread.daemon = True
                 thread.start()
     
-    # عرض بيانات الطقس
-    if st.session_state.weather_data:
-        st.markdown("---")
-        st.header("📊 تفاصيل الطقس")
-        display_weather_card(st.session_state.weather_data)
+    # لا نعرض تفاصيل الطقس منفصلة - كل شيء في المحادثة
         
-        # إضافة معلومات إضافية
-        card_data = format_weather_card(st.session_state.weather_data)
-        if card_data:
-            st.markdown("### 📍 الموقع")
-            st.info(f"**{card_data['city']}، {card_data['country']}**")
-            
-            # أيقونة الطقس
-            if card_data.get('icon'):
-                icon_url = f"http://openweathermap.org/img/wn/{card_data['icon']}@2x.png"
-                st.image(icon_url, width=100)
-        
-        # زر تشغيل الصوت يدوياً
-        if st.session_state.speech_service and (st.session_state.speech_service.use_edge_tts or st.session_state.speech_service.use_gtts or st.session_state.speech_service.tts_engine):
-            st.markdown("---")
-            col1, col2 = st.columns([3, 1])
-            with col2:
-                if st.button("🔊 تشغيل آخر رد صوتياً", use_container_width=True):
-                    # البحث عن آخر رد (من الرسائل أو من الرد الصوتي الأخير)
-                    last_message = None
-                    
-                    # أولاً: جرب الرد الصوتي الأخير
-                    if hasattr(st.session_state, 'last_voice_response') and st.session_state.last_voice_response:
-                        last_message = st.session_state.last_voice_response
-                    else:
-                        # ثانياً: ابحث في الرسائل
-                        for msg in reversed(st.session_state.messages):
-                            if msg["role"] == "assistant":
-                                last_message = msg["content"]
-                                break
-                    
-                    if last_message:
-                        try:
-                            import threading
-                            speech_service = st.session_state.speech_service  # نسخ المرجع قبل thread
-                            
-                            def speak_async(service, text):
-                                service.speak(text)
-                            
-                            thread = threading.Thread(target=speak_async, args=(speech_service, last_message))
-                            thread.daemon = True
-                            thread.start()
-                            st.success("🔊 جارٍ تشغيل الصوت...")
-                        except Exception as e:
-                            st.error(f"⚠️ خطأ في تشغيل الصوت: {str(e)}")
-                    else:
-                        st.warning("⚠️ لا يوجد رد للقراءة")
 
 if __name__ == "__main__":
     main()

@@ -54,8 +54,19 @@ class SpeechService:
         # التحقق من pygame
         try:
             from pygame import mixer
+            # محاولة تهيئة mixer مسبقاً
+            try:
+                if not mixer.get_init():
+                    mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+            except:
+                try:
+                    mixer.init()
+                except:
+                    pass
             self.pygame_available = True
         except ImportError:
+            self.pygame_available = False
+        except Exception:
             self.pygame_available = False
         
         # استخدام gTTS مع pygame أولاً (تشغيل مباشر من الذاكرة بدون ملفات)
@@ -133,8 +144,20 @@ class SpeechService:
                 tts.write_to_fp(fp)
                 fp.seek(0)
                 
+                # تهيئة mixer بشكل صحيح
+                try:
+                    # محاولة تهيئة mixer
+                    if not mixer.get_init():
+                        mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+                except:
+                    # إذا فشل، جرب تهيئة بسيطة
+                    try:
+                        mixer.init()
+                    except:
+                        # إذا فشل مرة أخرى، استخدم subprocess
+                        raise Exception("pygame mixer initialization failed")
+                
                 # تشغيل مباشر من الذاكرة
-                mixer.init()
                 mixer.music.load(fp)
                 mixer.music.play()
                 
@@ -142,7 +165,7 @@ class SpeechService:
                 while mixer.music.get_busy():
                     time.sleep(0.1)
                 
-                mixer.quit()
+                # لا نغلق mixer حتى لا نضطر لإعادة تهيئته
                 fp.close()
                 
                 return
